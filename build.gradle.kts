@@ -14,6 +14,11 @@ sourceSets {
             srcDir("res")
         }
     }
+    test {
+        java {
+            srcDir("test")
+        }
+    }
 }
 
 group = "gecko10000.telefuse"
@@ -31,6 +36,10 @@ dependencies {
     implementation("io.insert-koin:koin-core:3.5.3")
     implementation("dev.inmo:tgbotapi:15.2.0")
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.7.1")
+
+    testImplementation(platform("org.junit:junit-bom:5.10.0"))
+    testImplementation("org.junit.jupiter:junit-jupiter")
+    testImplementation("io.insert-koin:koin-test:3.5.3")
 }
 
 kotlin {
@@ -45,4 +54,12 @@ tasks {
 
 application {
     mainClass.set("gecko10000.telefuse.TeleFuseKt")
+}
+
+tasks.named<Test>("test") {
+    useJUnitPlatform()
+
+    testLogging {
+        events("passed")
+    }
 }

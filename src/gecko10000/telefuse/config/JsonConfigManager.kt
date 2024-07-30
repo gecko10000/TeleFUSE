@@ -2,22 +2,20 @@ package gecko10000.telefuse.config
 
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.json.Json
+import org.koin.core.component.KoinComponent
+import org.koin.core.component.inject
 import java.io.File
 import java.nio.file.Files
 
 class JsonConfigManager<T : Any>(
     private val configFile: File,
     private val backupDirectory: File,
-    json: Json = defaultConfiguration,
+    json: Json? = null,
     private val initialValue: T,
     private val serializer: KSerializer<T>,
-) {
+) : KoinComponent {
 
     companion object {
-        val defaultConfiguration = Json {
-            prettyPrint = true
-            encodeDefaults = true
-        }
         private const val backupAmount = 5
         private const val backupStart = 0
     }
@@ -25,7 +23,7 @@ class JsonConfigManager<T : Any>(
     constructor(
         configDirectory: File,
         configName: String = "config.json",
-        json: Json = defaultConfiguration,
+        json: Json? = null,
         initialValue: T,
         serializer: KSerializer<T>,
     ) : this(
@@ -37,9 +35,9 @@ class JsonConfigManager<T : Any>(
     )
 
     private val fileName = configFile.name
-    private val stringFormat = json
+    private val defaultJson: Json by inject()
+    private val stringFormat = json ?: defaultJson
     var value: T = initialValue
-        private set
 
     init {
         reload()

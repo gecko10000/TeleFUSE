@@ -2,10 +2,17 @@ package gecko10000.telefuse
 
 import gecko10000.telefuse.config.Config
 import gecko10000.telefuse.config.JsonConfigManager
+import kotlinx.serialization.json.Json
 import org.koin.dsl.module
 import java.io.File
 
 fun tgModules() = module {
+    single<Json> {
+        Json {
+            prettyPrint = true
+            encodeDefaults = true
+        }
+    }
     single<JsonConfigManager<Config>>(createdAtStart = true) {
         JsonConfigManager(
             configDirectory = File("."),
@@ -16,4 +23,5 @@ fun tgModules() = module {
     }
     single(createdAtStart = true) { BotManager() }
     single(createdAtStart = true) { FileManager() }
+    single(createdAtStart = true) { IndexManager() }
 }

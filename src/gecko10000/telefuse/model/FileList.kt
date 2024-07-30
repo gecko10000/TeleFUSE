@@ -4,5 +4,5 @@ import kotlinx.serialization.Serializable
 
 @Serializable
 data class FileList(
-    val files: MutableMap<String, FullFileInfo> = mutableMapOf(),
+    val files: Map<String, FullFileInfo> = mapOf(),
 )
