@@ -61,7 +61,7 @@ class NonexistentCache : IChunkCache, KoinComponent {
                 val newFileChunks = info.chunkFileIds.filterIndexed { i, _ -> i < index }
                 return@updateFileInfo info.copy(chunkFileIds = newFileChunks, sizeBytes = newSize)
             }
-            val name = "$filePath\\$index"
+            val name = "$filePath-$index"
             val id = runBlocking { botManager.uploadBytes(name, chunk) }
             val withAppended = info.chunkFileIds.plus(if (index == info.chunkFileIds.size) listOf(id) else emptyList())
             val newFileIds = withAppended.mapIndexed { i, fileId -> if (index == i) id else fileId }
