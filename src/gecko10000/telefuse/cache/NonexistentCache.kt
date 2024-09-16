@@ -11,8 +11,11 @@ import org.koin.core.component.inject
 import ru.serce.jnrfuse.ErrorCodes
 import ru.serce.jnrfuse.struct.FuseContext
 import java.io.FileNotFoundException
+import java.util.logging.Logger
 
 class NonexistentCache : IChunkCache, KoinComponent {
+
+    private val log = Logger.getLogger(this::class.qualifiedName)
 
     private val botManager: BotManager by inject()
     override val shardedIndex: ShardedIndex = ShardedIndex()
@@ -46,12 +49,12 @@ class NonexistentCache : IChunkCache, KoinComponent {
     override fun putChunk(filePath: String, index: Int, chunk: ByteArray?, newSize: Long) {
         shardedIndex.updateFileInfo(filePath) { info ->
             info ?: run {
-                println("Warning: putChunk was called on $filePath but info was not found.")
+                log.warning("putChunk was called on $filePath but info was not found.")
                 return@updateFileInfo null
             }
             // Don't allow chunk indices greater than size + 1
             if (index > info.chunkFileIds.size) {
-                println("Warning: putChunk called with index $index but only ${info.chunkFileIds.size} found.")
+                log.warning("putChunk called with index $index but only ${info.chunkFileIds.size} found.")
                 return@updateFileInfo info
             }
             if (chunk == null) {
