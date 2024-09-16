@@ -23,7 +23,7 @@ class FuseImpl : FuseStubFS(), KoinComponent {
 
     //private val json: Json by inject()
     private val chunkCache: IChunkCache by inject()
-    private val fileChunkManager: FileChunkManager by inject()
+    private val readWriteHelper: ReadWriteHelper by inject()
 
     override fun create(path: String, @mode_t mode: Long, fi: FuseFileInfo): Int {
         val fileInfo = chunkCache.shardedIndex.getInfo(path)
@@ -57,7 +57,7 @@ class FuseImpl : FuseStubFS(), KoinComponent {
     }
 
     override fun read(path: String, buf: Pointer, size: Long, offset: Long, fi: FuseFileInfo): Int {
-        return runBlocking { fileChunkManager.read(path, buf, size, offset) }
+        return runBlocking { readWriteHelper.read(path, buf, size, offset) }
     }
 
     override fun readdir(path: String, buf: Pointer, filler: FuseFillDir, offset: Long, fi: FuseFileInfo): Int {
@@ -92,7 +92,7 @@ class FuseImpl : FuseStubFS(), KoinComponent {
     }
 
     override fun truncate(path: String, size: Long): Int {
-        return runBlocking { fileChunkManager.truncate(path, size) }
+        return runBlocking { readWriteHelper.truncate(path, size) }
     }
 
     override fun unlink(path: String): Int {
@@ -108,7 +108,7 @@ class FuseImpl : FuseStubFS(), KoinComponent {
 
     override fun write(path: String, buf: Pointer, size: Long, offset: Long, fi: FuseFileInfo): Int {
         try {
-            return runBlocking { fileChunkManager.write(path, buf, size, offset) }
+            return runBlocking { readWriteHelper.write(path, buf, size, offset) }
         } catch (ex: Exception) {
             ex.printStackTrace()
             throw ex

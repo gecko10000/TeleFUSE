@@ -11,7 +11,7 @@ import kotlin.math.ceil
 import kotlin.math.max
 import kotlin.math.min
 
-class FileChunkManager : KoinComponent {
+class ReadWriteHelper : KoinComponent {
 
     val log = Logger.getLogger(this::class.qualifiedName)
 

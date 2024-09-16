@@ -24,6 +24,6 @@ fun tgModules() = module {
         )
     }
     single(createdAtStart = true) { BotManager() }
-    single(createdAtStart = true) { FileChunkManager() }
+    single(createdAtStart = true) { ReadWriteHelper() }
     single<IChunkCache>(createdAtStart = true) { NonexistentCache() }
 }
