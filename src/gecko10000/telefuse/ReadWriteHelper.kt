@@ -31,7 +31,7 @@ class ReadWriteHelper : KoinComponent {
             val needsPartialUpdate: Boolean = chunk.bytesCovered.first < writeRange.first
                     || chunk.bytesCovered.last > writeRange.last
             val chunkBytes = if (needsPartialUpdate && chunk.chunkIndex < chunk.fileInfo.chunkFileIds.size) {
-                chunkCache.getChunk(chunk.fileInfo.chunkFileIds[chunk.chunkIndex])
+                chunkCache.getChunk(chunk.fileInfo.chunkFileIds[chunk.chunkIndex]).copyOf(fileInfo.chunkSize)
             } else {
                 ByteArray(fileInfo.chunkSize)
             }
@@ -62,7 +62,6 @@ class ReadWriteHelper : KoinComponent {
         var bufferOffset = 0
         for (chunk in chunks) {
             val chunkBytes = chunkCache.getChunk(chunk.fileInfo.chunkFileIds[chunk.chunkIndex])
-            println(chunkBytes.size)
             val startIndex = ((offset + bufferOffset) % fileInfo.chunkSize).toInt()
             val toRead = min(size - bufferOffset, chunkBytes.size.toLong()).toInt()
             buf.put(bufferOffset.toLong(), chunkBytes, startIndex, toRead)
