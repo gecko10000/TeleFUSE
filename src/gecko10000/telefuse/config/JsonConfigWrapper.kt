@@ -7,7 +7,7 @@ import org.koin.core.component.inject
 import java.io.File
 import java.nio.file.Files
 
-class JsonConfigManager<T : Any>(
+class JsonConfigWrapper<T : Any>(
     private val configFile: File,
     private val backupDirectory: File,
     json: Json? = null,

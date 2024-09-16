@@ -7,14 +7,14 @@ import dev.inmo.tgbotapi.extensions.api.send.media.sendDocument
 import dev.inmo.tgbotapi.requests.abstracts.FileId
 import dev.inmo.tgbotapi.requests.abstracts.asMultipartFile
 import gecko10000.telefuse.config.Config
-import gecko10000.telefuse.config.JsonConfigManager
+import gecko10000.telefuse.config.JsonConfigWrapper
 import io.ktor.client.plugins.*
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
 
 class BotManager : KoinComponent {
 
-    private val configFile: JsonConfigManager<Config> by inject()
+    private val configFile: JsonConfigWrapper<Config> by inject()
 
     private val config: Config
         get() = configFile.value

@@ -1,7 +1,7 @@
 package gecko10000.telefuse
 
 import dev.inmo.tgbotapi.requests.abstracts.FileId
-import gecko10000.telefuse.model.FileList
+import gecko10000.telefuse.model.Filesystem
 import gecko10000.telefuse.model.FullFileInfo
 import kotlinx.coroutines.runBlocking
 import org.junit.jupiter.api.Test
@@ -16,21 +16,26 @@ class BotTest : KoinTest {
     @Test
     fun ensureIndexShardingWorks() {
         startKoin { modules(tgModules()) }
-        val fileList = FileList(
+        val filesystem = Filesystem(
             files = mutableMapOf(
                 "test" to FullFileInfo(
-                    sizeBytes = 12, permissions = 644, fileChunks = listOf(
+                    sizeBytes = 12,
+                    permissions = 644,
+                    uid = 0,
+                    gid = 0,
+                    chunkSize = Constant.MAX_CHUNK_SIZE,
+                    fileChunks = listOf(
                         FileId("file")
                     )
                 )
             )
         )
-        indexManager.index = fileList
+        indexManager.index = filesystem
         runBlocking {
-            indexManager.saveIndex(chunkSize = 10)
+            indexManager.saveIndex(chunkSize = Constant.MAX_CHUNK_SIZE)
             indexManager.loadIndex()
         }
-        assert(indexManager.index == fileList)
+        assert(indexManager.index == filesystem)
     }
 
 }

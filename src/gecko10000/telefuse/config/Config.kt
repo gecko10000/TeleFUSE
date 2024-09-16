@@ -11,4 +11,5 @@ data class Config(
     val channelId: ChatIdentifier = Username("@username"),
     val indexFiles: List<FileId> = listOf(),
     val requestTimeoutMs: Long = 120_000,
+    val chunkSizeOverrideBytes: Long? = null
 )
