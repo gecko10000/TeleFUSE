@@ -1,12 +1,10 @@
-package gecko10000.telefuse.model.info
+package gecko10000.telefuse.model.memory.info
 
-import dev.inmo.tgbotapi.requests.abstracts.FileId
 import gecko10000.telefuse.Constant
 import gecko10000.telefuse.model.Time
-import kotlinx.serialization.Serializable
+import gecko10000.telefuse.model.memory.FileChunk
 import ru.serce.jnrfuse.struct.FuseContext
 
-@Serializable
 data class FileInfo(
     override val name: String,
     override val permissions: Int,
@@ -16,7 +14,7 @@ data class FileInfo(
     override val modificationTime: Time,
     val sizeBytes: Long,
     val chunkSize: Int,
-    val chunkFileIds: List<FileId>
+    val chunks: List<FileChunk>
 ) : NodeInfo() {
     companion object {
         fun default(
@@ -33,7 +31,7 @@ data class FileInfo(
             modificationTime = Time.now(),
             sizeBytes = 0,
             chunkSize = chunkSize,
-            chunkFileIds = emptyList(),
+            chunks = emptyList(),
         )
     }
 }

@@ -23,6 +23,8 @@ fun tgModules() = module {
             serializer = Config.serializer(),
         )
     }
+    single(createdAtStart = true) { RemoteIndexManager() }
+    single(createdAtStart = true) { IndexManager() }
     single(createdAtStart = true) { BotManager() }
     single(createdAtStart = true) { ReadWriteHelper() }
     single<IChunkCache>(createdAtStart = true) { NonexistentCache() }

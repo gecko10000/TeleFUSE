@@ -1,11 +1,9 @@
-package gecko10000.telefuse.model.info
+package gecko10000.telefuse.model.memory.info
 
 import gecko10000.telefuse.model.Time
-import kotlinx.serialization.Serializable
 import ru.serce.jnrfuse.struct.FileStat
 import ru.serce.jnrfuse.struct.FuseContext
 
-@Serializable
 data class DirInfo(
     override val name: String,
     override val permissions: Int,

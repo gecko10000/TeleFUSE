@@ -1,12 +1,11 @@
 package gecko10000.telefuse.cache
 
-import dev.inmo.tgbotapi.requests.abstracts.FileId
-import gecko10000.telefuse.ShardedIndex
+import gecko10000.telefuse.IndexManager
 import ru.serce.jnrfuse.struct.FuseContext
 
 interface IChunkCache {
 
-    val shardedIndex: ShardedIndex
+    val indexManager: IndexManager
 
     // Intended ONLY to update the file information
     // NOT the contents
@@ -26,7 +25,7 @@ interface IChunkCache {
     // Retrieves the chunk at index `index`.
     fun getChunk(filePath: String, index: Int): ByteArray
 
-    fun getChunk(id: FileId): ByteArray
+    //fun getChunk(id: FileId): ByteArray
 
     fun renameNode(oldPath: String, newPath: String): Int
 

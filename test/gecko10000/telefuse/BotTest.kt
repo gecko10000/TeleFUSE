@@ -1,8 +1,8 @@
 package gecko10000.telefuse
 
 import dev.inmo.tgbotapi.requests.abstracts.FileId
-import gecko10000.telefuse.model.Filesystem
 import gecko10000.telefuse.model.FullFileInfo
+import gecko10000.telefuse.model.remote.RemoteFS
 import kotlinx.coroutines.runBlocking
 import org.junit.jupiter.api.Test
 import org.koin.core.context.startKoin
@@ -16,7 +16,7 @@ class BotTest : KoinTest {
     @Test
     fun ensureIndexShardingWorks() {
         startKoin { modules(tgModules()) }
-        val filesystem = Filesystem(
+        val filesystem = RemoteFS(
             files = mutableMapOf(
                 "test" to FullFileInfo(
                     sizeBytes = 12,

@@ -2,8 +2,8 @@ package gecko10000.telefuse
 
 import gecko10000.telefuse.cache.IChunkCache
 import gecko10000.telefuse.model.Time
-import gecko10000.telefuse.model.info.DirInfo
-import gecko10000.telefuse.model.info.FileInfo
+import gecko10000.telefuse.model.memory.info.DirInfo
+import gecko10000.telefuse.model.memory.info.FileInfo
 import jnr.ffi.Pointer
 import jnr.ffi.types.mode_t
 import kotlinx.coroutines.runBlocking
@@ -26,7 +26,7 @@ class FuseImpl : FuseStubFS(), KoinComponent {
     private val readWriteHelper: ReadWriteHelper by inject()
 
     override fun create(path: String, @mode_t mode: Long, fi: FuseFileInfo): Int {
-        val fileInfo = chunkCache.shardedIndex.getInfo(path)
+        val fileInfo = chunkCache.indexManager.getInfo(path)
         if (fileInfo != null) return -ErrorCodes.EEXIST()
         chunkCache.upsertFile(path, mode.toInt(), context)
         return 0
@@ -34,7 +34,7 @@ class FuseImpl : FuseStubFS(), KoinComponent {
 
     override fun getattr(path: String, stat: FileStat): Int {
         try {
-            val nodeInfo = chunkCache.shardedIndex.getInfo(path)
+            val nodeInfo = chunkCache.indexManager.getInfo(path)
             nodeInfo ?: return -ErrorCodes.ENOENT()
             stat.st_mode.set(nodeInfo.permissions)
             if (nodeInfo is FileInfo) {
@@ -50,7 +50,7 @@ class FuseImpl : FuseStubFS(), KoinComponent {
     }
 
     override fun mkdir(path: String, mode: Long): Int {
-        val nodeInfo = chunkCache.shardedIndex.getInfo(path)
+        val nodeInfo = chunkCache.indexManager.getInfo(path)
         nodeInfo ?: return -ErrorCodes.EEXIST()
         chunkCache.upsertDir(path, mode.toInt(), context)
         return 0
@@ -61,7 +61,7 @@ class FuseImpl : FuseStubFS(), KoinComponent {
     }
 
     override fun readdir(path: String, buf: Pointer, filler: FuseFillDir, offset: Long, fi: FuseFileInfo): Int {
-        val nodeInfo = chunkCache.shardedIndex.getInfo(path)
+        val nodeInfo = chunkCache.indexManager.getInfo(path)
         nodeInfo ?: return -ErrorCodes.ENOENT()
         if (nodeInfo !is DirInfo) return -ErrorCodes.ENOTDIR()
         filler.apply(buf, ".", null, 0)
@@ -75,16 +75,16 @@ class FuseImpl : FuseStubFS(), KoinComponent {
     // Not implementing statfs because Winblows is for losers
 
     override fun rename(oldpath: String, newpath: String): Int {
-        val nodeInfo = chunkCache.shardedIndex.getInfo(oldpath)
+        val nodeInfo = chunkCache.indexManager.getInfo(oldpath)
         nodeInfo ?: return -ErrorCodes.ENOENT()
-        val newParent = chunkCache.shardedIndex.getInfo(newpath.substringBeforeLast('/'))
+        val newParent = chunkCache.indexManager.getInfo(newpath.substringBeforeLast('/'))
         newParent ?: return -ErrorCodes.ENOENT()
         if (newParent !is DirInfo) return -ErrorCodes.ENOTDIR()
         return chunkCache.renameNode(oldpath, newpath)
     }
 
     override fun rmdir(path: String): Int {
-        val nodeInfo = chunkCache.shardedIndex.getInfo(path)
+        val nodeInfo = chunkCache.indexManager.getInfo(path)
         nodeInfo ?: return -ErrorCodes.ENOENT()
         if (nodeInfo !is DirInfo) return -ErrorCodes.ENOTDIR()
         chunkCache.deleteDir(path)
@@ -96,7 +96,7 @@ class FuseImpl : FuseStubFS(), KoinComponent {
     }
 
     override fun unlink(path: String): Int {
-        val nodeInfo = chunkCache.shardedIndex.getInfo(path)
+        val nodeInfo = chunkCache.indexManager.getInfo(path)
         nodeInfo ?: return -ErrorCodes.ENOENT()
         chunkCache.deleteFile(path)
         return 0
@@ -116,7 +116,7 @@ class FuseImpl : FuseStubFS(), KoinComponent {
     }
 
     override fun utimens(path: String, timespec: Array<out Timespec>): Int {
-        val fileInfo = chunkCache.shardedIndex.getInfo(path)
+        val fileInfo = chunkCache.indexManager.getInfo(path)
         fileInfo ?: return -ErrorCodes.ENOENT()
         val accessTime = Time.fromTimespec(timespec[0])
         val modificationTime = Time.fromTimespec(timespec[1])
@@ -124,7 +124,7 @@ class FuseImpl : FuseStubFS(), KoinComponent {
             is DirInfo -> fileInfo.copy(accessTime = accessTime, modificationTime = modificationTime)
             is FileInfo -> fileInfo.copy(accessTime = accessTime, modificationTime = modificationTime)
         }
-        chunkCache.shardedIndex.setInfo(path, newFileInfo)
+        chunkCache.indexManager.setInfo(path, newFileInfo)
         return 0
     }
 

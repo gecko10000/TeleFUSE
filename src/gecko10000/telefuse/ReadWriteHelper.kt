@@ -1,7 +1,7 @@
 package gecko10000.telefuse
 
 import gecko10000.telefuse.cache.IChunkCache
-import gecko10000.telefuse.model.info.FileInfo
+import gecko10000.telefuse.model.memory.info.FileInfo
 import jnr.ffi.Pointer
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
@@ -18,20 +18,20 @@ class ReadWriteHelper : KoinComponent {
     private val chunkCache: IChunkCache by inject()
 
     fun write(filePath: String, buf: Pointer, size: Long, offset: Long): Int {
-        val fileInfo = chunkCache.shardedIndex.getInfo(filePath) as? FileInfo
+        val fileInfo = chunkCache.indexManager.getInfo(filePath) as? FileInfo
         fileInfo ?: return -ErrorCodes.ENOENT()
         val endOfWriteRange = offset + size
         val newFileSize = max(endOfWriteRange, fileInfo.sizeBytes)
         val writeRange = LongRange(offset, endOfWriteRange - 1)
-        val chunks = calculateChunkIndices(fileInfo, size, offset).map { FileChunk(fileInfo, it) }
+        val chunks = calculateChunkIndices(fileInfo, size, offset).map { ChunkVirtualization(fileInfo, it) }
         var bufferOffset = 0
         for (chunk in chunks) {
             // If it needs a partial update, we
             // shall have to retrieve the chunk first.
             val needsPartialUpdate: Boolean = chunk.bytesCovered.first < writeRange.first
                     || chunk.bytesCovered.last > writeRange.last
-            val chunkBytes = if (needsPartialUpdate && chunk.chunkIndex < chunk.fileInfo.chunkFileIds.size) {
-                chunkCache.getChunk(chunk.fileInfo.chunkFileIds[chunk.chunkIndex]).copyOf(fileInfo.chunkSize)
+            val chunkBytes = if (needsPartialUpdate && chunk.chunkIndex < chunk.fileInfo.chunks.size) {
+                chunkCache.getChunk(filePath, chunk.chunkIndex).copyOf(fileInfo.chunkSize)
             } else {
                 ByteArray(fileInfo.chunkSize)
             }
@@ -56,12 +56,12 @@ class ReadWriteHelper : KoinComponent {
     }
 
     fun read(filePath: String, buf: Pointer, size: Long, offset: Long): Int {
-        val fileInfo = chunkCache.shardedIndex.getInfo(filePath) as? FileInfo
+        val fileInfo = chunkCache.indexManager.getInfo(filePath) as? FileInfo
         fileInfo ?: return -ErrorCodes.ENOENT()
-        val chunks = calculateChunkIndices(fileInfo, size, offset).map { FileChunk(fileInfo, it) }
+        val chunks = calculateChunkIndices(fileInfo, size, offset).map { ChunkVirtualization(fileInfo, it) }
         var bufferOffset = 0
         for (chunk in chunks) {
-            val chunkBytes = chunkCache.getChunk(chunk.fileInfo.chunkFileIds[chunk.chunkIndex])
+            val chunkBytes = chunkCache.getChunk(filePath, chunk.chunkIndex)
             val startIndex = ((offset + bufferOffset) % fileInfo.chunkSize).toInt()
             val toRead = min(size - bufferOffset, chunkBytes.size.toLong()).toInt()
             buf.put(bufferOffset.toLong(), chunkBytes, startIndex, toRead)
@@ -71,7 +71,7 @@ class ReadWriteHelper : KoinComponent {
     }
 
     fun truncate(filePath: String, newSize: Long): Int {
-        val fileInfo = chunkCache.shardedIndex.getInfo(filePath)
+        val fileInfo = chunkCache.indexManager.getInfo(filePath)
         fileInfo ?: return -ErrorCodes.ENOENT()
         if (fileInfo !is FileInfo) return -ErrorCodes.EISDIR()
         // We don't need to remove extraneous bytes
@@ -94,7 +94,7 @@ class ReadWriteHelper : KoinComponent {
     // This will update the contents of the
     // file chunk, and mark it as dirty (to
     // be uploaded to Telegram).
-    private fun updateChunk(filePath: String, fileChunk: FileChunk, newContent: ByteArray, newSize: Long) {
+    private fun updateChunk(filePath: String, fileChunk: ChunkVirtualization, newContent: ByteArray, newSize: Long) {
         chunkCache.putChunk(filePath, fileChunk.chunkIndex, newContent, newSize)
     }
 
@@ -112,7 +112,7 @@ class ReadWriteHelper : KoinComponent {
         return IntRange(startIndex.toInt(), (endIndexExclusive - 1).toInt())
     }
 
-    data class FileChunk(val fileInfo: FileInfo, val chunkIndex: Int) {
+    data class ChunkVirtualization(val fileInfo: FileInfo, val chunkIndex: Int) {
         val bytesCovered: LongRange by lazy {
             val startByte = fileInfo.chunkSize.toLong() * chunkIndex
             LongRange(startByte, startByte - 1 + fileInfo.chunkSize)
