@@ -23,15 +23,17 @@ class ReadWriteHelper : KoinComponent {
         val endOfWriteRange = offset + size
         val newFileSize = max(endOfWriteRange, fileInfo.sizeBytes)
         val writeRange = LongRange(offset, endOfWriteRange - 1)
-        val chunks = calculateChunkIndices(fileInfo, size, offset).map { ChunkVirtualization(fileInfo, it) }
+        val chunkIndices = calculateChunkIndices(fileInfo, size, offset)
         var bufferOffset = 0
-        for (chunk in chunks) {
+        for (chunkIndex in chunkIndices) {
             // If it needs a partial update, we
             // shall have to retrieve the chunk first.
-            val needsPartialUpdate: Boolean = chunk.bytesCovered.first < writeRange.first
-                    || chunk.bytesCovered.last > writeRange.last
-            val chunkBytes = if (needsPartialUpdate && chunk.chunkIndex < chunk.fileInfo.chunks.size) {
-                chunkCache.getChunk(filePath, chunk.chunkIndex).copyOf(fileInfo.chunkSize)
+            val startByte = fileInfo.chunkSize.toLong() * chunkIndex
+            val bytesCovered = LongRange(startByte, startByte - 1 + fileInfo.chunkSize)
+            val needsPartialUpdate: Boolean = bytesCovered.first < writeRange.first
+                    || bytesCovered.last > writeRange.last
+            val chunkBytes = if (needsPartialUpdate && chunkIndex < fileInfo.chunks.size) {
+                chunkCache.getChunk(filePath, chunkIndex).copyOf(fileInfo.chunkSize)
             } else {
                 ByteArray(fileInfo.chunkSize)
             }
@@ -43,14 +45,14 @@ class ReadWriteHelper : KoinComponent {
                     ).toInt()
             buf.get(bufferOffset.toLong(), chunkBytes, startIndex, toWrite)
             bufferOffset += toWrite
-            log.info("${chunk.bytesCovered.last + 1} >= $newFileSize")
-            val usedBytes = if (chunk.bytesCovered.last + 1 >= newFileSize) {
+            log.info("${bytesCovered.last + 1} >= $newFileSize")
+            val usedBytes = if (bytesCovered.last + 1 >= newFileSize) {
                 val lastChunkSize = (newFileSize % fileInfo.chunkSize).toInt()
                 chunkBytes.copyOfRange(0, lastChunkSize)
             } else {
                 chunkBytes
             }
-            chunkCache.putChunk(filePath, chunk.chunkIndex, usedBytes, newFileSize)
+            chunkCache.putChunk(filePath, chunkIndex, usedBytes, newFileSize)
         }
         return bufferOffset
     }
@@ -58,10 +60,10 @@ class ReadWriteHelper : KoinComponent {
     fun read(filePath: String, buf: Pointer, size: Long, offset: Long): Int {
         val fileInfo = chunkCache.indexManager.getInfo(filePath) as? FileInfo
         fileInfo ?: return -ErrorCodes.ENOENT()
-        val chunks = calculateChunkIndices(fileInfo, size, offset).map { ChunkVirtualization(fileInfo, it) }
+        val chunkIndices = calculateChunkIndices(fileInfo, size, offset)
         var bufferOffset = 0
-        for (chunk in chunks) {
-            val chunkBytes = chunkCache.getChunk(filePath, chunk.chunkIndex)
+        for (chunkIndex in chunkIndices) {
+            val chunkBytes = chunkCache.getChunk(filePath, chunkIndex)
             val startIndex = ((offset + bufferOffset) % fileInfo.chunkSize).toInt()
             val toRead = min(size - bufferOffset, chunkBytes.size.toLong()).toInt()
             buf.put(bufferOffset.toLong(), chunkBytes, startIndex, toRead)
@@ -91,13 +93,6 @@ class ReadWriteHelper : KoinComponent {
         return 0
     }
 
-    // This will update the contents of the
-    // file chunk, and mark it as dirty (to
-    // be uploaded to Telegram).
-    private fun updateChunk(filePath: String, fileChunk: ChunkVirtualization, newContent: ByteArray, newSize: Long) {
-        chunkCache.putChunk(filePath, fileChunk.chunkIndex, newContent, newSize)
-    }
-
     // Gets the indices required by the operation.
     // Let's imagine a chunk size of 10.
     // If size is 10 and offset is 0, we want 0 start and 1 endExcl.
@@ -110,13 +105,6 @@ class ReadWriteHelper : KoinComponent {
         val startIndex = offset / fileInfo.chunkSize
         val endIndexExclusive = ceil((offset + size) / fileInfo.chunkSize.toDouble()).toLong()
         return IntRange(startIndex.toInt(), (endIndexExclusive - 1).toInt())
-    }
-
-    data class ChunkVirtualization(val fileInfo: FileInfo, val chunkIndex: Int) {
-        val bytesCovered: LongRange by lazy {
-            val startByte = fileInfo.chunkSize.toLong() * chunkIndex
-            LongRange(startByte, startByte - 1 + fileInfo.chunkSize)
-        }
     }
 
 }
