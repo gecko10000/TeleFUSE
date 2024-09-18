@@ -51,8 +51,9 @@ class FuseImpl : FuseStubFS(), KoinComponent {
 
     override fun mkdir(path: String, mode: Long): Int {
         val nodeInfo = chunkCache.indexManager.getInfo(path)
-        nodeInfo ?: return -ErrorCodes.EEXIST()
-        chunkCache.upsertDir(path, mode.toInt(), context)
+        if (nodeInfo != null) return -ErrorCodes.EEXIST()
+        val perms = mode.toInt() or FileStat.S_IFDIR
+        chunkCache.upsertDir(path, perms, context)
         return 0
     }
 
