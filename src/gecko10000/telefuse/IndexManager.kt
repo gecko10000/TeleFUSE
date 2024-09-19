@@ -109,10 +109,12 @@ class IndexManager : KoinComponent {
     // Validation is done upon chunk
     // creation, so there should not be
     // an NPE here ever™.
-    private suspend fun syncChunk(path: String, file: FileInfo, chunkIndex: Int): FileId {
+    private suspend fun syncChunk(path: String, file: FileInfo, chunkIndex: Int, chunkSize: Int): FileId {
         val chunk = file.chunks[chunkIndex]
         if (chunk.isDirty) {
-            return botManager.uploadBytes(path, chunk.bytes!!)
+            val needsResize = chunk.bytes!!.size != chunkSize
+            val resized = if (needsResize) chunk.bytes.copyOf(chunkSize) else chunk.bytes
+            return botManager.uploadBytes("$path-$chunkIndex", resized)
         }
         return chunk.fileId!!
     }
@@ -120,7 +122,12 @@ class IndexManager : KoinComponent {
     private suspend fun uploadFileChunks(file: FileInfo): FileInfo = coroutineScope {
         val fileIds = IntRange(0, file.chunks.size - 1).map { i ->
             async {
-                syncChunk(file.name, file, i)
+                syncChunk(
+                    file.name,
+                    file,
+                    i,
+                    if (i == file.chunks.size - 1) (file.sizeBytes % file.chunkSize).toInt() else file.chunkSize
+                )
             }
         }.awaitAll()
         val newChunks = file.chunks.mapIndexed { i, chunk ->

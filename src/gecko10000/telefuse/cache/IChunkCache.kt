@@ -19,8 +19,8 @@ interface IChunkCache {
     fun deleteDir(dirPath: String)
 
     // Replaces the chunk at index `index` with the content given.
-    // If `chunk` is null, the chunk is deleted.
-    fun putChunk(filePath: String, index: Int, chunk: ByteArray?, newSize: Long)
+    // If `bytes` is null, the chunk is deleted.
+    fun putChunk(filePath: String, index: Int, bytes: ByteArray?, newSize: Long)
 
     // Retrieves the chunk at index `index`.
     fun getChunk(filePath: String, index: Int): ByteArray

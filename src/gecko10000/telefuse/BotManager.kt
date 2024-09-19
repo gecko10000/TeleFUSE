@@ -11,8 +11,11 @@ import gecko10000.telefuse.config.JsonConfigWrapper
 import io.ktor.client.plugins.*
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
+import java.util.logging.Logger
 
 class BotManager : KoinComponent {
+
+    private val log = Logger.getLogger(this::class.qualifiedName)
 
     private val configFile: JsonConfigWrapper<Config> by inject()
 
@@ -28,9 +31,14 @@ class BotManager : KoinComponent {
         }
     }
 
-    suspend fun uploadBytes(name: String, bytes: ByteArray): FileId =
-        bot.sendDocument(config.channelId, bytes.asMultipartFile(name))
+    suspend fun uploadBytes(name: String, bytes: ByteArray): FileId {
+        if (bytes.isEmpty()) {
+            log.info("Trying to upload empty byte array.")
+            throw Exception()
+        }
+        return bot.sendDocument(config.channelId, bytes.asMultipartFile(name))
             .content.media.fileId
+    }
 
     suspend fun uploadString(name: String, content: String) = uploadBytes(name, content.toByteArray())
 

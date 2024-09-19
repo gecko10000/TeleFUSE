@@ -18,41 +18,33 @@ class ReadWriteHelper : KoinComponent {
     private val chunkCache: IChunkCache by inject()
 
     fun write(filePath: String, buf: Pointer, size: Long, offset: Long): Int {
+        log.info("Writing $size bytes to $filePath at $offset")
         val fileInfo = chunkCache.indexManager.getInfo(filePath) as? FileInfo
         fileInfo ?: return -ErrorCodes.ENOENT()
         val endOfWriteRange = offset + size
         val newFileSize = max(endOfWriteRange, fileInfo.sizeBytes)
-        val writeRange = LongRange(offset, endOfWriteRange - 1)
         val chunkIndices = calculateChunkIndices(fileInfo, size, offset)
         var bufferOffset = 0
         for (chunkIndex in chunkIndices) {
-            // If it needs a partial update, we
-            // shall have to retrieve the chunk first.
-            val startByte = fileInfo.chunkSize.toLong() * chunkIndex
-            val bytesCovered = LongRange(startByte, startByte - 1 + fileInfo.chunkSize)
-            val needsPartialUpdate: Boolean = bytesCovered.first < writeRange.first
-                    || bytesCovered.last > writeRange.last
-            val chunkBytes = if (needsPartialUpdate && chunkIndex < fileInfo.chunks.size) {
-                chunkCache.getChunk(filePath, chunkIndex).copyOf(fileInfo.chunkSize)
-            } else {
+            // Either we start writing `offset % fileInfo.chunkSize`
+            // bytes in (on the first chunk), or we start at
+            // the start of the chunk (for the other ones)
+            val chunkStartByte = ((offset + bufferOffset) % fileInfo.chunkSize).toInt()
+            val endByteExclusive = fileInfo.chunkSize.toLong() * (chunkIndex + 1)
+            val bytesToWrite = min(size - bufferOffset, endByteExclusive - chunkStartByte).toInt()
+            // Need to write however much is less,
+            // amount of bytes remaining in `write` or
+            // amount of bytes available in FileChunk.
+            val chunkBytes = if (chunkIndex >= fileInfo.chunks.size) {
                 ByteArray(fileInfo.chunkSize)
-            }
-            val toWrite = min(size - bufferOffset, fileInfo.chunkSize.toLong()).toInt()
-            val startIndex = (
-                    if (needsPartialUpdate)
-                        (offset + bufferOffset) % fileInfo.chunkSize
-                    else 0
-                    ).toInt()
-            buf.get(bufferOffset.toLong(), chunkBytes, startIndex, toWrite)
-            bufferOffset += toWrite
-            log.info("${bytesCovered.last + 1} >= $newFileSize")
-            val usedBytes = if (bytesCovered.last + 1 >= newFileSize) {
-                val lastChunkSize = (newFileSize % fileInfo.chunkSize).toInt()
-                chunkBytes.copyOfRange(0, lastChunkSize)
             } else {
-                chunkBytes
+                chunkCache.getChunk(filePath, chunkIndex)
             }
-            chunkCache.putChunk(filePath, chunkIndex, usedBytes, newFileSize)
+            log.info("Buffer is ${chunkBytes.size} bytes")
+            log.info("Calling buf.get($bufferOffset, <bytes>, ${chunkStartByte % fileInfo.chunkSize}, $bytesToWrite)")
+            buf.get(bufferOffset.toLong(), chunkBytes, chunkStartByte % fileInfo.chunkSize, bytesToWrite)
+            bufferOffset += bytesToWrite
+            chunkCache.putChunk(filePath, chunkIndex, chunkBytes, newFileSize)
         }
         return bufferOffset
     }
@@ -65,7 +57,7 @@ class ReadWriteHelper : KoinComponent {
         for (chunkIndex in chunkIndices) {
             val chunkBytes = chunkCache.getChunk(filePath, chunkIndex)
             val startIndex = ((offset + bufferOffset) % fileInfo.chunkSize).toInt()
-            val toRead = min(size - bufferOffset, chunkBytes.size.toLong()).toInt()
+            val toRead = min(size - bufferOffset, chunkBytes.size.toLong() - startIndex % fileInfo.chunkSize).toInt()
             buf.put(bufferOffset.toLong(), chunkBytes, startIndex, toRead)
             bufferOffset += toRead
         }

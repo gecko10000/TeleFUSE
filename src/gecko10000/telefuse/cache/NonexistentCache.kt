@@ -46,7 +46,7 @@ class NonexistentCache : IChunkCache, KoinComponent {
         runBlocking { indexManager.flushToRemote() }
     }
 
-    override fun putChunk(filePath: String, index: Int, chunk: ByteArray?, newSize: Long) {
+    override fun putChunk(filePath: String, index: Int, bytes: ByteArray?, newSize: Long) {
         indexManager.updateFileInfo(filePath) { info ->
             info ?: run {
                 log.warning("putChunk was called on $filePath but info was not found.")
@@ -57,15 +57,14 @@ class NonexistentCache : IChunkCache, KoinComponent {
                 log.warning("putChunk called with index $index but only ${info.chunks.size} found.")
                 return@updateFileInfo info
             }
-            if (chunk == null) {
+            if (bytes == null) {
                 val newFileChunks = info.chunks.filterIndexed { i, _ -> i < index }
                 return@updateFileInfo info.copy(chunks = newFileChunks, sizeBytes = newSize)
             }
-            val name = "$filePath-$index"
             val newChunk = if (index == info.chunks.size) {
-                FileChunk(bytes = chunk, isDirty = true)
+                FileChunk(bytes = bytes, isDirty = true)
             } else {
-                info.chunks[index].copy(bytes = chunk, isDirty = true)
+                info.chunks[index].copy(bytes = bytes, isDirty = true)
             }
             val withAppended = info.chunks.plus(if (index == info.chunks.size) listOf(newChunk) else emptyList())
             val newChunks = withAppended.mapIndexed { i, chunk -> if (index == i) newChunk else chunk }

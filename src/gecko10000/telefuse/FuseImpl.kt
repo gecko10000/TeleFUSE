@@ -6,7 +6,6 @@ import gecko10000.telefuse.model.memory.info.DirInfo
 import gecko10000.telefuse.model.memory.info.FileInfo
 import jnr.ffi.Pointer
 import jnr.ffi.types.mode_t
-import kotlinx.coroutines.runBlocking
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
 import ru.serce.jnrfuse.ErrorCodes
@@ -58,7 +57,7 @@ class FuseImpl : FuseStubFS(), KoinComponent {
     }
 
     override fun read(path: String, buf: Pointer, size: Long, offset: Long, fi: FuseFileInfo): Int {
-        return runBlocking { readWriteHelper.read(path, buf, size, offset) }
+        return readWriteHelper.read(path, buf, size, offset)
     }
 
     override fun readdir(path: String, buf: Pointer, filler: FuseFillDir, offset: Long, fi: FuseFileInfo): Int {
@@ -93,7 +92,7 @@ class FuseImpl : FuseStubFS(), KoinComponent {
     }
 
     override fun truncate(path: String, size: Long): Int {
-        return runBlocking { readWriteHelper.truncate(path, size) }
+        return readWriteHelper.truncate(path, size)
     }
 
     override fun unlink(path: String): Int {
@@ -103,13 +102,13 @@ class FuseImpl : FuseStubFS(), KoinComponent {
         return 0
     }
 
-    override fun open(path: String?, fi: FuseFileInfo?): Int {
+    override fun open(path: String, fi: FuseFileInfo): Int {
         return 0
     }
 
     override fun write(path: String, buf: Pointer, size: Long, offset: Long, fi: FuseFileInfo): Int {
         try {
-            return runBlocking { readWriteHelper.write(path, buf, size, offset) }
+            return readWriteHelper.write(path, buf, size, offset)
         } catch (ex: Exception) {
             ex.printStackTrace()
             throw ex

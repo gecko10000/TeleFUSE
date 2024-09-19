@@ -1,7 +1,7 @@
 package gecko10000.telefuse
 
+import gecko10000.telefuse.cache.BatchingUpdateCache
 import gecko10000.telefuse.cache.IChunkCache
-import gecko10000.telefuse.cache.NonexistentCache
 import gecko10000.telefuse.config.Config
 import gecko10000.telefuse.config.JsonConfigWrapper
 import kotlinx.serialization.json.Json
@@ -27,5 +27,5 @@ fun tgModules() = module {
     single(createdAtStart = true) { IndexManager() }
     single(createdAtStart = true) { BotManager() }
     single(createdAtStart = true) { ReadWriteHelper() }
-    single<IChunkCache>(createdAtStart = true) { NonexistentCache() }
+    single<IChunkCache>(createdAtStart = true) { BatchingUpdateCache() }
 }

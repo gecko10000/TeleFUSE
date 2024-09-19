@@ -12,8 +12,11 @@ import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
+import java.util.logging.Logger
 
 class RemoteIndexManager : KoinComponent {
+
+    private val log = Logger.getLogger(this::class.qualifiedName)
 
     private val json: Json by inject()
     private val configFile: JsonConfigWrapper<Config> by inject()
@@ -25,7 +28,10 @@ class RemoteIndexManager : KoinComponent {
 
     // This cache is used to minimize
     // re-uploads of the index file.
-    private var cachedRemoteChunks: List<String> = emptyList()
+    // We use lateinit because otherwise
+    // it would be initialized after
+    // the call to loadIndex() above.
+    private lateinit var cachedRemoteChunks: List<String>
 
     // This retrieves and decodes the index
     // using the file IDs in the config
@@ -54,20 +60,8 @@ class RemoteIndexManager : KoinComponent {
         return botManager.uploadString("~index-$index", newChunk)
     }
 
-    /*private fun listAllFiles(prefix: String, dirInfo: RemoteDirInfo): List<Pair<String, RemoteFileInfo>> {
-        return dirInfo.childNodes.flatMap { childInfo ->
-            when (childInfo) {
-                is RemoteFileInfo -> listOf("$prefix${dirInfo.name}/${childInfo.name}" to childInfo)
-                is RemoteDirInfo -> listAllFiles(prefix = "$prefix${dirInfo.name}/", childInfo)
-            }
-        }
-    }
-
-    // Returns a map of file path to file info
-    fun listAllFiles(): Map<String, RemoteFileInfo> {
-        return index.root?.let { listAllFiles("/", it) }?.toMap() ?: emptyMap()
-    }*/
-
+    // Chunks and uploads the index to Telegram.
+    // Deduplicates existing chunks.
     suspend fun saveIndex() = coroutineScope {
         val jsonString = json.encodeToString(index)
         // might need fixing if chunkSize goes over 2G
